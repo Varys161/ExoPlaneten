@@ -1,12 +1,12 @@
 package exo;
+
 import java.io.Serializable;
 
 // Positionsdaten
 
-public class Position implements Serializable{
+public class Position implements Serializable {
 
     private static final long serialVersionUID = -2782482662823778148L;
-
     private int x;
     private int y;
     private Direction dir;
@@ -21,8 +21,8 @@ public class Position implements Serializable{
         this.dir = dir;
     }
 
-    public Position(Position pos){
-        if(pos != null){
+    public Position(Position pos) {
+        if (pos != null) {
             this.x = pos.x;
             this.y = pos.y;
             this.dir = pos.dir;
@@ -34,12 +34,15 @@ public class Position implements Serializable{
     public int getX() {
         return x;
     }
+
     public void setX(int x) {
         this.x = x;
     }
+
     public int getY() {
         return y;
     }
+
     public void setY(int y) {
         this.y = y;
     }
@@ -79,25 +82,16 @@ public class Position implements Serializable{
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("POSITION|");
-        sb.append(x);
-        sb.append("|");
-        sb.append(y);
-        sb.append("|");
-        sb.append(dir.name());
-        return sb.toString();
+        return "POSITION|" + x + "|" + y + "|" + dir.name();
     }
 
-    public static Position parse(String s){
+    public static Position parse(String s) {
         String[] token = s.trim().split("\\|");
-        if(token.length == 4){
-            if (token[0].equals("POSITION")){
-                int x = Integer.parseInt(token[1]);
-                int y = Integer.parseInt(token[2]);
-                Direction d = Direction.valueOf(token[3]);
-                return new Position(x, y, d);
-            }
+        if (token.length == 4 && token[0].equals("POSITION")) {
+            int x = Integer.parseInt(token[1]);
+            int y = Integer.parseInt(token[2]);
+            Direction d = Direction.valueOf(token[3]);
+            return new Position(x, y, d);
         }
         return null;
     }

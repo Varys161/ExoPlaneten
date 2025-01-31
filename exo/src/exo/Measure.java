@@ -9,7 +9,6 @@ public class Measure implements Serializable {
     private static final long serialVersionUID = 2L;
     protected Ground ground;
     protected float temperature;
-    // Konstante fuer unbekannte Temperatur
     public static final float TEMP_UNKNOWN = -999.9f;
 
     public Measure(Ground ground, float temperature) {
@@ -39,27 +38,20 @@ public class Measure implements Serializable {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("MEASURE|");
-        sb.append(ground.name());
-        sb.append("|");
-        sb.append(temperature);
-        return sb.toString();
+        return "MEASURE|" + ground.name() + "|" + temperature;
     }
 
     public static Measure parse(String s) {
         String[] token = s.trim().split("\\|");
-        if (token.length == 3) {
-            if (token[0].equals("MEASURE")) {
-                try {
-                    Ground g = Ground.valueOf(token[1]);
-                    float temp = Float.parseFloat(token[2]);
-                    return new Measure(g, temp);
-                } catch (Exception e) {
-                }
+        if (token.length == 3 && token[0].equals("MEASURE")) {
+            try {
+                Ground g = Ground.valueOf(token[1]);
+                float temp = Float.parseFloat(token[2]);
+                return new Measure(g, temp);
+            } catch (Exception e) {
+                // Handle exception
             }
         }
         return null;
     }
-
 }
