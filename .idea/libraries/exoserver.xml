@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="exoserver">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/exo/lib/exoserver.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

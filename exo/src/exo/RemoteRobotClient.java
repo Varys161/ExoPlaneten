@@ -6,15 +6,24 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
 
+/**
+ * Client-Klasse, die Befehle an den ExoServer sendet und
+ * dessen Antworten empfängt und verarbeitet.
+ */
 public class RemoteRobotClient implements Runnable {
+
     private String hostname;
     private int port;
     private String robotName;
+
+    // Beispiel: Unten rechts (9,5), Blick nach WEST
     private int startX;
     private int startY;
     private RobotGUI gui;
+    private Position currentPosition;
 
-    public RemoteRobotClient(String hostname, int port, String robotName, int startX, int startY, RobotGUI gui) {
+    public RemoteRobotClient(String hostname, int port, String robotName,
+                             int startX, int startY, RobotGUI gui) {
         this.hostname = hostname;
         this.port = port;
         this.robotName = robotName;
@@ -25,125 +34,93 @@ public class RemoteRobotClient implements Runnable {
 
     @Override
     public void run() {
-        start();
+        startClient();
     }
 
-    public void start() {
+    public void startClient() {
         try (Socket socket = new Socket(hostname, port);
              PrintStream out = new PrintStream(socket.getOutputStream());
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            gui.log("Connected to server: " + socket.isConnected());
+            gui.log("[INFO] Verbunden mit Server: " + hostname + ":" + port);
 
-            // Sende init-Befehl mit verschachteltem JSON-Objekt für die Größe
-            String initCommand = createInitCommand(10, 6);
-            gui.log("Sending init command: " + initCommand);
-            out.println(initCommand);
+            // 1) orbit
+            String orbitCmd = ExoCommandSender.createOrbitCommand(robotName);
+            logSend("orbit", orbitCmd);
+            out.println(orbitCmd);
+            processServerLine(in.readLine());
 
-            String initResponse = in.readLine();
-            gui.log("Init response: " + initResponse);
+            // 2) Land unten rechts, WEST
+            currentPosition = new Position(9, 5, Direction.WEST);
+            gui.updateRobotPosition(robotName, currentPosition);
 
-            // Sende orbit-Befehl
-            String orbitCommand = createOrbitCommand(robotName);
-            gui.log("Sending orbit command: " + orbitCommand);
-            out.println(orbitCommand);
+            String landCmd = ExoCommandSender.createLandCommand(
+                    currentPosition.getX(),
+                    currentPosition.getY(),
+                    currentPosition.getDir().name()
+            );
+            logSend("land", landCmd);
+            out.println(landCmd);
+            processServerLine(in.readLine());
 
-            String orbitResponse = in.readLine();
-            gui.log("Orbit response: " + orbitResponse);
+            // 3) Move 3-mal und danach jeweils scan
+            for (int i = 1; i <= 3; i++) {
+                // move
+                String moveCmd = ExoCommandSender.createMoveCommand();
+                logSend("move #" + i, moveCmd);
+                out.println(moveCmd);
 
-            // Sende land-Befehl an einer sicheren Position
-            String landCommand = createLandCommand(robotName, startX, startY, Direction.NORTH);
-            gui.log("Sending land command: " + landCommand);
-            out.println(landCommand);
+                // Antwort vom Server: "moved" oder evtl. "crashed"
+                processServerLine(in.readLine());
 
-            String landResponse = in.readLine();
-            gui.log("Land response: " + landResponse);
-            if (isSafeToLand(landResponse)) {
-                gui.updateRobotPosition(robotName, new Position(startX, startY, Direction.NORTH));
-                updateGroundType(landResponse);
-            } else {
-                gui.log("Unsafe landing position for " + robotName);
-                return;
+                // sofort "scan"
+                String scanCmd = ExoCommandSender.createScanCommand();
+                logSend("scan #" + i, scanCmd);
+                out.println(scanCmd);
+
+                // Antwort vom Server: "scaned", wir färben dann das (vor dem Roboter) Feld
+                processServerLine(in.readLine());
             }
 
-            // Sende scan-Befehl
-            String scanCommand = createScanCommand(robotName);
-            gui.log("Sending scan command: " + scanCommand);
-            out.println(scanCommand);
-
-            String scanResponse = in.readLine();
-            gui.log("Scan response: " + scanResponse);
-            updateGroundType(scanResponse);
-
-            // Sende move-Befehl
-            String moveCommand = createMoveCommand(robotName);
-            gui.log("Sending move command: " + moveCommand);
-            out.println(moveCommand);
-
-            String moveResponse = in.readLine();
-            gui.log("Move response: " + moveResponse);
-            if (moveResponse != null && moveResponse.contains("\"CMD\":\"moved\"")) {
-                Position newPosition = parsePositionFromMoveResponse(moveResponse);
-                gui.updateRobotPosition(robotName, newPosition);
-            } else {
-                gui.log("Move command failed for " + robotName);
-            }
+            gui.log("[INFO] Alle Befehle gesendet (Orbit, Land, 3× Move, je 1× Scan).");
 
         } catch (IOException e) {
-            gui.log("Connection error: " + e.getMessage());
+            gui.log("[ERROR] Verbindung abgebrochen: " + e.getMessage());
         }
     }
 
-    private String createInitCommand(int width, int height) {
-        return String.format("{\"CMD\":\"init\",\"SIZE\":{\"WIDTH\":%d,\"HEIGHT\":%d}}", width, height);
-    }
-
-    private String createOrbitCommand(String robotName) {
-        return String.format("{\"CMD\":\"orbit\",\"name\":\"%s\"}", robotName);
-    }
-
-    private String createLandCommand(String robotName, int x, int y, Direction direction) {
-        return String.format("{\"CMD\":\"land\",\"name\":\"%s\",\"x\":%d,\"y\":%d,\"direction\":\"%s\"}", robotName, x, y, direction);
-    }
-
-    private String createScanCommand(String robotName) {
-        return String.format("{\"CMD\":\"scan\",\"name\":\"%s\"}", robotName);
-    }
-
-    private String createMoveCommand(String robotName) {
-        return String.format("{\"CMD\":\"move\",\"name\":\"%s\"}", robotName);
-    }
-
-    private boolean isSafeToLand(String response) {
-        return response != null && response.contains("\"status\":\"safe\"");
-    }
-
-    private void updateGroundType(String response) {
-        if (response != null && response.contains("\"CMD\":\"scan\"")) {
-            int x = extractXFromResponse(response);
-            int y = extractYFromResponse(response);
-            String groundType = extractGroundTypeFromResponse(response);
-            gui.updateGroundType(x, y, groundType);
+    private void processServerLine(String line) {
+        if (line != null) {
+            gui.log("[RECV] " + line);
+            ExoResponseParser.parseServerResponse(line, gui, robotName, this);
+        } else {
+            gui.log("[WARN] Server hat null/empty geschickt.");
         }
     }
 
-    private int extractXFromResponse(String response) {
-        // Implementiere die Logik, um den x-Wert aus der Antwort zu extrahieren
-        return 0; // Beispielwert
+    private void logSend(String cmdName, String fullJson) {
+        gui.log("[SEND " + cmdName.toUpperCase() + "] " + fullJson);
     }
 
-    private int extractYFromResponse(String response) {
-        // Implementiere die Logik, um den y-Wert aus der Antwort zu extrahieren
-        return 0; // Beispielwert
+    public Position getCurrentPosition() {
+        return currentPosition;
     }
 
-    private String extractGroundTypeFromResponse(String response) {
-        // Implementiere die Logik, um den Bodentyp aus der Antwort zu extrahieren
-        return "NICHTS"; // Beispielwert
+    public void setCurrentPosition(Position newPos) {
+        this.currentPosition = newPos;
     }
 
-    private Position parsePositionFromMoveResponse(String response) {
-        // Implementiere die Logik, um die neue Position aus der Antwort zu extrahieren
-        return new Position(0, 0, Direction.NORTH); // Beispielwert
+    public static void main(String[] args) {
+        RobotGUI gui = new RobotGUI();
+        gui.setVisible(true);
+        gui.log("GUI gestartet (Test)");
+
+        // Start Koords (9,5), WEST
+        RemoteRobotClient client = new RemoteRobotClient(
+                "localhost", 8150, "Robot1", 9, 5, gui
+        );
+
+        gui.log("Starte jetzt den Client-Thread...");
+        new Thread(client).start();
     }
 }
