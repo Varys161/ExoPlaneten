@@ -3,25 +3,36 @@ package exo;
 public class ExoLauncher {
 
     public static void main(String[] args) {
-        // 1) GUI erstellen
-        RobotGUI gui = new RobotGUI();  // Startet mit Grid 1×1
+        // 1) Eine GUI für beide Roboter
+        RobotGUI gui = new RobotGUI();
         gui.setVisible(true);
-        gui.log("GUI gestartet (Test)");
+        gui.log("GUI gestartet (Test) für 2 Roboter...");
 
-        // 2) Client anlegen
-        // Achte darauf, dass ein Server auf localhost:8150 läuft
-        // und dass "Robot1" etc. akzeptiert werden.
-        RemoteRobotClient client = new RemoteRobotClient(
-                "localhost",      // Host
-                8150,             // Port
-                "Robot1",         // Robotername
-                4,                // Start-X
-                2,                // Start-Y
-                gui               // Referenz auf die GUI
+        RobotImpl robot = new RobotImpl();
+
+        // 2) Roboter A: "RobotLeft", Start (0,5)
+        RemoteRobotClient robotLeft = new RemoteRobotClient(
+                "localhost",
+                8150,
+                "RobotLeft",
+                0,
+                5,
+                gui
         );
 
-        // 3) Client in eigenem Thread starten
-        gui.log("Starte jetzt den Client-Thread...");
-        new Thread(client).start();
+        // 3) Roboter B: "RobotRight", Start (9,5)
+        RemoteRobotClient robotRight = new RemoteRobotClient(
+                "localhost",
+                8150,
+                "RobotRight",
+                9,
+                5,
+                gui
+        );
+
+        // 4) Beide Threads starten
+        gui.log("Starte zwei Robot-Threads (Left/Right)...");
+        new Thread(robotLeft).start();
+        new Thread(robotRight).start();
     }
 }

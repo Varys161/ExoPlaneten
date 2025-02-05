@@ -7,16 +7,15 @@ import java.io.PrintStream;
 import java.net.Socket;
 
 /**
- * Client-Klasse, die Befehle an den ExoServer sendet und
- * dessen Antworten empfängt und verarbeitet.
+ * Ein RemoteRobotClient, der nach dem Landen mehrere Befehle
+ * (scan, move, rotate) ausführt, um den Planeten ein wenig
+ * zu "erkunden".
  */
 public class RemoteRobotClient implements Runnable {
 
     private String hostname;
     private int port;
     private String robotName;
-
-    // Beispiel: Unten rechts (9,5), Blick nach WEST
     private int startX;
     private int startY;
     private RobotGUI gui;
@@ -37,6 +36,13 @@ public class RemoteRobotClient implements Runnable {
         startClient();
     }
 
+    /**
+     * Hauptablauf:
+     * 1) socket-Verbindung
+     * 2) orbit
+     * 3) land (sofort Roboter in GUI anzeigen)
+     * 4) mehrfache Befehle: scan, move, rotate ...
+     */
     public void startClient() {
         try (Socket socket = new Socket(hostname, port);
              PrintStream out = new PrintStream(socket.getOutputStream());
@@ -50,45 +56,49 @@ public class RemoteRobotClient implements Runnable {
             out.println(orbitCmd);
             processServerLine(in.readLine());
 
-            // 2) Land unten rechts, WEST
-            currentPosition = new Position(9, 5, Direction.WEST);
+            // 2) land: Startposition + Richtung NORTH
+            currentPosition = new Position(startX, startY, Direction.NORTH);
             gui.updateRobotPosition(robotName, currentPosition);
 
             String landCmd = ExoCommandSender.createLandCommand(
-                    currentPosition.getX(),
-                    currentPosition.getY(),
-                    currentPosition.getDir().name()
-            );
+                    startX, startY, currentPosition.getDir().name());
             logSend("land", landCmd);
             out.println(landCmd);
             processServerLine(in.readLine());
 
-            // 3) Move 3-mal und danach jeweils scan
-            for (int i = 1; i <= 3; i++) {
-                // move
-                String moveCmd = ExoCommandSender.createMoveCommand();
-                logSend("move #" + i, moveCmd);
-                out.println(moveCmd);
-
-                // Antwort vom Server: "moved" oder evtl. "crashed"
-                processServerLine(in.readLine());
-
-                // sofort "scan"
+            // 3) Erkundungsschleife
+            for (int i = 1; i <= 5; i++) {
+                // a) scan
                 String scanCmd = ExoCommandSender.createScanCommand();
                 logSend("scan #" + i, scanCmd);
                 out.println(scanCmd);
-
-                // Antwort vom Server: "scaned", wir färben dann das (vor dem Roboter) Feld
                 processServerLine(in.readLine());
+
+                // b) move
+                String moveCmd = ExoCommandSender.createMoveCommand();
+                logSend("move #" + i, moveCmd);
+                out.println(moveCmd);
+                processServerLine(in.readLine());
+
+                // c) rotate
+                String rotateCmd = ExoCommandSender.createRotateCommand("RIGHT");
+                logSend("rotate #" + i, rotateCmd);
+                out.println(rotateCmd);
+                processServerLine(in.readLine());
+
+                // Du könntest noch mehr Befehle einbauen, z. B. charge, mvscan usw.
             }
 
-            gui.log("[INFO] Alle Befehle gesendet (Orbit, Land, 3× Move, je 1× Scan).");
+            gui.log("[INFO] Erkundung beendet (Orbit, Land, 5× (scan, move, rotate)).");
 
         } catch (IOException e) {
             gui.log("[ERROR] Verbindung abgebrochen: " + e.getMessage());
         }
     }
 
+    /**
+     * Verarbeitet eine Zeile vom Server.
+     */
     private void processServerLine(String line) {
         if (line != null) {
             gui.log("[RECV] " + line);
@@ -98,6 +108,9 @@ public class RemoteRobotClient implements Runnable {
         }
     }
 
+    /**
+     * Log-Helfer
+     */
     private void logSend(String cmdName, String fullJson) {
         gui.log("[SEND " + cmdName.toUpperCase() + "] " + fullJson);
     }
@@ -108,19 +121,5 @@ public class RemoteRobotClient implements Runnable {
 
     public void setCurrentPosition(Position newPos) {
         this.currentPosition = newPos;
-    }
-
-    public static void main(String[] args) {
-        RobotGUI gui = new RobotGUI();
-        gui.setVisible(true);
-        gui.log("GUI gestartet (Test)");
-
-        // Start Koords (9,5), WEST
-        RemoteRobotClient client = new RemoteRobotClient(
-                "localhost", 8150, "Robot1", 9, 5, gui
-        );
-
-        gui.log("Starte jetzt den Client-Thread...");
-        new Thread(client).start();
     }
 }

@@ -3,7 +3,7 @@ package exo;
 import java.io.PrintStream;
 
 public class RobotImpl implements Robot {
-    private String landerName;
+    public String landerName;
     private int energyLevel;
 
     @Override
@@ -11,11 +11,11 @@ public class RobotImpl implements Robot {
         this.landerName = lander;
         this.energyLevel = 100; // Initial energy level
 
-        // Land the robot
+        // Land
         Measure measure = planet.land(this, landPos);
         out.println("Landed at: " + landPos + " with measure: " + measure);
 
-        // Perform initial scan
+        // initial scan
         Measure scanResult = planet.scan(this);
         out.println("Initial scan result: " + scanResult);
 
