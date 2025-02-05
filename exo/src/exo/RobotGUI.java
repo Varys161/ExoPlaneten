@@ -13,14 +13,7 @@ public class RobotGUI extends JFrame {
     private int gridWidth;
     private int gridHeight;
 
-    /**
-     * Standardkonstruktor – initiiert die GUI mit einer
-     * Minimalgröße von 1×1 (oder 0×0), falls man wirklich
-     * erst nach dem init-Befehl vom Server die Größe erfährt.
-     */
     public RobotGUI() {
-        // Starten wir mal mit 1×1, damit nichts kaputt geht,
-        // solange wir noch nicht die echte Größe kennen.
         this.gridWidth = 1;
         this.gridHeight = 1;
 
@@ -28,7 +21,7 @@ public class RobotGUI extends JFrame {
         groundTypes = new HashMap<>();
 
         setTitle("Exoplanet Exploration");
-        setSize(800, 700); // Fenstergröße, nicht Grid-Size
+        setSize(800, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -135,11 +128,6 @@ public class RobotGUI extends JFrame {
         return groundTypes.getOrDefault(new Point(x, y), "NICHTS");
     }
 
-    /**
-     * Methode, um das Grid dynamisch anzupassen.
-     * Wird vom ResponseParser aufgerufen,
-     * sobald der Server "init" sendet.
-     */
     public void setGridSize(int w, int h) {
         this.gridWidth = w;
         this.gridHeight = h;

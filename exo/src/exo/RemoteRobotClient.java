@@ -6,11 +6,6 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
 
-/**
- * Ein RemoteRobotClient, der nach dem Landen mehrere Befehle
- * (scan, move, rotate) ausführt, um den Planeten ein wenig
- * zu "erkunden".
- */
 public class RemoteRobotClient implements Runnable {
 
     private String hostname;
@@ -36,13 +31,6 @@ public class RemoteRobotClient implements Runnable {
         startClient();
     }
 
-    /**
-     * Hauptablauf:
-     * 1) socket-Verbindung
-     * 2) orbit
-     * 3) land (sofort Roboter in GUI anzeigen)
-     * 4) mehrfache Befehle: scan, move, rotate ...
-     */
     public void startClient() {
         try (Socket socket = new Socket(hostname, port);
              PrintStream out = new PrintStream(socket.getOutputStream());
@@ -66,27 +54,23 @@ public class RemoteRobotClient implements Runnable {
             out.println(landCmd);
             processServerLine(in.readLine());
 
-            // 3) Erkundungsschleife
+
             for (int i = 1; i <= 5; i++) {
-                // a) scan
                 String scanCmd = ExoCommandSender.createScanCommand();
                 logSend("scan #" + i, scanCmd);
                 out.println(scanCmd);
                 processServerLine(in.readLine());
 
-                // b) move
                 String moveCmd = ExoCommandSender.createMoveCommand();
                 logSend("move #" + i, moveCmd);
                 out.println(moveCmd);
                 processServerLine(in.readLine());
 
-                // c) rotate
                 String rotateCmd = ExoCommandSender.createRotateCommand("RIGHT");
                 logSend("rotate #" + i, rotateCmd);
                 out.println(rotateCmd);
                 processServerLine(in.readLine());
 
-                // Du könntest noch mehr Befehle einbauen, z. B. charge, mvscan usw.
             }
 
             gui.log("[INFO] Erkundung beendet (Orbit, Land, 5× (scan, move, rotate)).");
@@ -96,9 +80,6 @@ public class RemoteRobotClient implements Runnable {
         }
     }
 
-    /**
-     * Verarbeitet eine Zeile vom Server.
-     */
     private void processServerLine(String line) {
         if (line != null) {
             gui.log("[RECV] " + line);
@@ -108,9 +89,6 @@ public class RemoteRobotClient implements Runnable {
         }
     }
 
-    /**
-     * Log-Helfer
-     */
     private void logSend(String cmdName, String fullJson) {
         gui.log("[SEND " + cmdName.toUpperCase() + "] " + fullJson);
     }

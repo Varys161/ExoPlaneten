@@ -2,13 +2,6 @@ package exo;
 
 public class ExoResponseParser {
 
-    /**
-     * Hauptmethode zum Verarbeiten einer Server-Antwort (JSON).
-     * @param json        Die empfangene JSON-String
-     * @param gui         Referenz zur GUI
-     * @param robotName   Name des Roboters (z.B. "Robot1")
-     * @param client      Referenz auf den Client, um z.B. currentPosition zu setzen
-     */
     public static void parseServerResponse(String json,
                                            RobotGUI gui,
                                            String robotName,
@@ -30,13 +23,11 @@ public class ExoResponseParser {
 
             case "landed":
                 // {"CMD":"landed","MEASURE":{"GROUND":"...","TEMP":...}}
-                // => Bodeninfo für das Feld, auf dem der Roboter gerade steht
-                parseLanded(json, gui, client);
+                   parseLanded(json, gui, client);
                 break;
 
             case "scaned":
                 // {"CMD":"scaned","MEASURE":{"GROUND":"...","TEMP":...}}
-                // => Bodeninfo für das Feld vor dem Roboter
                 parseScaned(json, gui, client);
                 break;
 
@@ -48,7 +39,6 @@ public class ExoResponseParser {
             case "mvscaned":
                 // {"CMD":"mvscaned","MEASURE":{"GROUND":"...","TEMP":...},
                 //  "POSITION":{"X":...,"Y":...,"DIRECTION":"..."}}
-                // => Move + Scan in einem Schritt
                 parseMvScaned(json, gui, robotName, client);
                 break;
 
@@ -80,8 +70,7 @@ public class ExoResponseParser {
 
             case "pos":
                 // {"CMD":"pos","POSITION":{...}}
-                // => ähnlich wie "moved"
-                parseMoved(json, gui, robotName, client);
+               parseMoved(json, gui, robotName, client);
                 break;
 
             case "charged":
@@ -95,13 +84,6 @@ public class ExoResponseParser {
         }
     }
 
-    // --------------------------------------------------------------------------------
-    // 1) landed
-    // --------------------------------------------------------------------------------
-    /**
-     * Verarbeitet {"CMD":"landed","MEASURE":{"GROUND":"...","TEMP":...}}.
-     * Der Roboter steht gerade auf diesem Feld.
-     */
     private static void parseLanded(String json, RobotGUI gui, RemoteRobotClient client) {
         String measureObj = extractObject(json, "MEASURE");
         if (measureObj != null) {
@@ -109,8 +91,7 @@ public class ExoResponseParser {
             String temp   = extractValueByKey(measureObj, "TEMP");
             gui.log("→ MEASURE: GROUND=" + ground + ", TEMP=" + temp);
 
-            // Wir färben das aktuelle Feld des Roboters:
-            Position pos = client.getCurrentPosition();
+           Position pos = client.getCurrentPosition();
             if (pos != null) {
                 gui.log("→ Färbe Landeplatz: " + pos.getX() + "," + pos.getY() +
                         " (" + ground + ")");
@@ -119,13 +100,6 @@ public class ExoResponseParser {
         }
     }
 
-    // --------------------------------------------------------------------------------
-    // 2) scaned
-    // --------------------------------------------------------------------------------
-    /**
-     * Verarbeitet {"CMD":"scaned","MEASURE":{"GROUND":"...","TEMP":...}}.
-     * Scannt das Feld vor dem Roboter (laut gängigem Protokoll).
-     */
     private static void parseScaned(String json, RobotGUI gui, RemoteRobotClient client) {
         String measureObj = extractObject(json, "MEASURE");
         if (measureObj != null) {
@@ -133,7 +107,6 @@ public class ExoResponseParser {
             String temp   = extractValueByKey(measureObj, "TEMP");
             gui.log("→ MEASURE: GROUND=" + ground + ", TEMP=" + temp);
 
-            // Feld vor dem Roboter einfärben
             Position currentPos = client.getCurrentPosition();
             if (currentPos != null) {
                 Position frontPos = getTileInFront(currentPos);
@@ -143,15 +116,7 @@ public class ExoResponseParser {
             }
         }
     }
-
-    // --------------------------------------------------------------------------------
-    // 3) moved
-    // --------------------------------------------------------------------------------
-    /**
-     * Verarbeitet {"CMD":"moved","POSITION":{"X":...,"Y":...,"DIRECTION":"..."}}.
-     * => Roboter hat sich um 1 Feld bewegt; neue Position, kein Boden-Scan.
-     */
-    private static void parseMoved(String json, RobotGUI gui,
+private static void parseMoved(String json, RobotGUI gui,
                                    String robotName,
                                    RemoteRobotClient client) {
         String posObj = extractObject(json, "POSITION");
@@ -168,9 +133,7 @@ public class ExoResponseParser {
                 Direction direction = Direction.valueOf(dir);
 
                 Position newPos = new Position(x, y, direction);
-                // Client aktualisieren
-                client.setCurrentPosition(newPos);
-                // GUI aktualisieren
+                 client.setCurrentPosition(newPos);
                 gui.updateRobotPosition(robotName, newPos);
 
             } catch (Exception e) {
@@ -179,17 +142,9 @@ public class ExoResponseParser {
         }
     }
 
-    // --------------------------------------------------------------------------------
-    // 4) mvscaned
-    // --------------------------------------------------------------------------------
-    /**
-     * Verarbeitet {"CMD":"mvscaned","MEASURE":{...},"POSITION":{...}}
-     * => Roboter bewegt sich + scannt das neue Feld.
-     */
     private static void parseMvScaned(String json, RobotGUI gui,
                                       String robotName,
                                       RemoteRobotClient client) {
-        // 1) Erst Position parsen:
         String posObj = extractObject(json, "POSITION");
         Position newPos = null;
 
@@ -213,8 +168,7 @@ public class ExoResponseParser {
             }
         }
 
-        // 2) Dann Measure-Objekt => Boden des NEUEN Feldes
-        String measureObj = extractObject(json, "MEASURE");
+       String measureObj = extractObject(json, "MEASURE");
         if (measureObj != null) {
             String ground = extractValueByKey(measureObj, "GROUND");
             String temp   = extractValueByKey(measureObj, "TEMP");
@@ -228,14 +182,7 @@ public class ExoResponseParser {
         }
     }
 
-    // --------------------------------------------------------------------------------
-    // Hilfsmethode: Feld vor dem Roboter berechnen
-    // --------------------------------------------------------------------------------
-    /**
-     * Liefert die Position, die direkt vor dem Roboter liegt,
-     * basierend auf seiner Blickrichtung.
-     */
-    private static Position getTileInFront(Position pos) {
+   private static Position getTileInFront(Position pos) {
         int x = pos.getX();
         int y = pos.getY();
         switch (pos.getDir()) {
@@ -247,9 +194,6 @@ public class ExoResponseParser {
         return new Position(x, y, pos.getDir());
     }
 
-    // --------------------------------------------------------------------------------
-    // parseStatus / parseSize
-    // --------------------------------------------------------------------------------
     private static void parseStatus(String json, RobotGUI gui) {
         // z. B. {"CMD":"status","STATUS":{"TEMP":..., "ENERGY":..., "MESSAGE":"..."}}
         String statusObj = extractObject(json, "STATUS");
@@ -279,15 +223,7 @@ public class ExoResponseParser {
         }
     }
 
-    // --------------------------------------------------------------------------------
-    // String-Parsing Hilfsmethoden
-    // --------------------------------------------------------------------------------
-    /**
-     * Sucht im JSON-String nach dem Schlüssel "key"
-     * und gibt den anschließenden Wert (String ohne Anführungszeichen) zurück.
-     * (Sehr rudimentär; für echte Projekte lieber eine JSON-Bibliothek nutzen!)
-     */
-    private static String extractValueByKey(String json, String key) {
+   private static String extractValueByKey(String json, String key) {
         String search = "\"" + key + "\":";
         int idx = json.indexOf(search);
         if (idx == -1) return null;
@@ -308,22 +244,17 @@ public class ExoResponseParser {
         return sb.toString().trim();
     }
 
-    /**
-     * Sucht nach "key":{ ... } und gibt den Inhalt der { } zurück.
-     */
     private static String extractObject(String json, String key) {
         String search = "\"" + key + "\":";
         int idx = json.indexOf(search);
         if (idx == -1) return null;
 
         int start = idx + search.length();
-        // Suche '{'
         while (start < json.length() && json.charAt(start) != '{') {
             start++;
         }
         if (start >= json.length()) return null;
 
-        // Klammern zählen
         int braceCount = 0;
         for (int i = start; i < json.length(); i++) {
             if (json.charAt(i) == '{') {

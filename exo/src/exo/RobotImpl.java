@@ -11,28 +11,21 @@ public class RobotImpl implements Robot {
         this.landerName = lander;
         this.energyLevel = 100; // Initial energy level
 
-        // Land
         Measure measure = planet.land(this, landPos);
         out.println("Landed at: " + landPos + " with measure: " + measure);
 
-        // initial scan
         Measure scanResult = planet.scan(this);
         out.println("Initial scan result: " + scanResult);
 
-        // Move and scan
         Position newPos = planet.move(this);
         Measure moveScanResult = planet.moveScan(this, newPos);
         out.println("Move and scan result: " + moveScanResult);
-
-        // Manage energy
-        manageEnergy(out);
     }
 
     private void manageEnergy(PrintStream out) {
         if (energyLevel < 20) {
             out.println("Energy low, returning to base for recharge.");
-            // Logic to return to base for recharge
-        } else {
+         } else {
             out.println("Energy level: " + energyLevel);
         }
     }
